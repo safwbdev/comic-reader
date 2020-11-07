@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useEffect, useState } from "react";
 import ReactDOM from "react-dom";
 import { useDropzone } from "react-dropzone";
 const baseStyle = {
@@ -30,6 +30,7 @@ const rejectStyle = {
 };
 
 function Basic(props) {
+  const [files, setFiles] = useState([]);
   const {
     getRootProps,
     getInputProps,
@@ -37,7 +38,20 @@ function Basic(props) {
     acceptedFiles,
     isDragAccept,
     isDragReject,
-  } = useDropzone({ accept: "image/*" });
+  } = useDropzone({
+    accept: "image/*",
+    noClick: true,
+    noKeyboard: true,
+    onDrop: (acceptedFiles) => {
+      setFiles(
+        acceptedFiles.map((file) =>
+          Object.assign(file, {
+            preview: URL.createObjectURL(file),
+          })
+        )
+      );
+    },
+  });
 
   const style = useMemo(
     () => ({
@@ -49,7 +63,54 @@ function Basic(props) {
     [isDragActive, isDragReject, isDragAccept]
   );
 
-  const files = acceptedFiles.map((file) => (
+  const thumbsContainer = {
+    display: "flex",
+    flexDirection: "row",
+    flexWrap: "wrap",
+    marginTop: 16,
+  };
+
+  const thumb = {
+    display: "inline-flex",
+    borderRadius: 2,
+    border: "1px solid #eaeaea",
+    marginBottom: 8,
+    marginRight: 8,
+    width: 100,
+    height: 100,
+    padding: 4,
+    boxSizing: "border-box",
+  };
+
+  const thumbInner = {
+    display: "flex",
+    minWidth: 0,
+    overflow: "hidden",
+  };
+
+  const img = {
+    display: "block",
+    width: "auto",
+    height: "100%",
+  };
+
+  const thumbs = files.map((file, index) => (
+    <div style={thumb} key={file.name}>
+      <div style={thumbInner}>
+        <img src={file.preview} style={img} alt={index} />
+      </div>
+    </div>
+  ));
+
+  useEffect(
+    () => () => {
+      // Make sure to revoke the data uris to avoid memory leaks
+      files.forEach((file) => URL.revokeObjectURL(file.preview));
+    },
+    [files]
+  );
+
+  const filepath = acceptedFiles.map((file) => (
     <li key={file.path}>
       {file.path} - {file.size} bytes
     </li>
@@ -63,8 +124,9 @@ function Basic(props) {
       </div>
       <aside>
         <h4>Files</h4>
-        <ul>{files}</ul>
+        <ul>{filepath}</ul>
       </aside>
+      <aside style={thumbsContainer}>{thumbs}</aside>
     </div>
   );
 }
